@@ -238,13 +238,225 @@ SongJ,Artist10,English,130,0.9,0.8,0.95
 2. 編譯與執行步驟
 請在終端機（Terminal）中執行以下指令：
 
-# 1. 編譯原始碼（假設檔名為 main.cpp）
+#1. 編譯原始碼（假設檔名為 main.cpp）
 g++ -std=c++11 -O3 main.cpp -o MusicRecommender
 
-# 2. 執行編譯後的系統
+#2. 執行編譯後的系統
 ./MusicRecommender
 
-3. 系統輸出範例
+3.程式碼
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <fstream>
+#include <cmath>
+#include <algorithm>
+#include <chrono>
+#include <iomanip>
+
+using namespace std;
+
+struct Song {
+    string name;
+    string artist;
+    string language;
+    vector<double> features;          // 原始特徵
+    vector<double> normalized_features; // 標準化後的特徵
+};
+
+// 自動生成測試用的擴充 CSV 檔案
+void generateMockCSV(string filename) {
+    ofstream file(filename);
+    file << "song,artist,language,tempo,energy,valence,danceability\n"
+         << "SongA,Artist1,English,90,0.6,0.5,0.7\n"
+         << "SongB,Artist2,Korean,92,0.65,0.55,0.72\n"
+         << "SongC,Artist3,Chinese,88,0.58,0.52,0.68\n"
+         << "SongD,Artist4,English,120,0.8,0.7,0.9\n"
+         << "SongE,Artist5,Korean,118,0.78,0.68,0.88\n"
+         << "SongF,Artist6,Chinese,85,0.5,0.4,0.6\n"
+         << "SongG,Artist7,English,87,0.55,0.45,0.65\n"
+         << "SongH,Artist8,Korean,91,0.6,0.5,0.7\n"
+         << "SongI,Artist9,Chinese,89,0.57,0.48,0.66\n"
+         << "SongJ,Artist10,English,130,0.9,0.8,0.95\n"
+         << "SongK,Artist11,Japanese,93,0.62,0.51,0.70\n"
+         << "SongL,Artist12,Japanese,125,0.85,0.72,0.91\n"
+         << "SongM,Artist13,Spanish,94,0.70,0.60,0.80\n"
+         << "SongN,Artist14,Spanish,86,0.48,0.38,0.58\n"
+         << "SongO,Artist15,French,88,0.52,0.42,0.62\n";
+    file.close();
+}
+
+// 讀取 CSV
+vector<Song> loadCSV(string filename) {
+    vector<Song> songs;
+    ifstream file(filename);
+    string line;
+
+    if (!file.is_open()) {
+        cerr << "Error opening file: " << filename << endl;
+        return songs;
+    }
+
+    getline(file, line); // 跳過標頭
+
+    while (getline(file, line)) {
+        stringstream ss(line);
+        string token;
+        Song s;
+        
+        getline(ss, s.name, ',');
+        getline(ss, s.artist, ',');
+        getline(ss, s.language, ',');
+        
+        while (getline(ss, token, ',')) {
+            s.features.push_back(stod(token));
+        }
+        songs.push_back(s);
+    }
+    return songs;
+}
+
+// 特徵標準化 (Min-Max Normalization)
+void normalizeFeatures(vector<Song>& songs) {
+    if (songs.empty()) return;
+    int num_features = songs[0].features.size();
+    vector<double> min_vals(num_features, 1e9);
+    vector<double> max_vals(num_features, -1e9);
+
+    // 找出每個特徵的最大與最小值
+    for (const auto& s : songs) {
+        for (int i = 0; i < num_features; i++) {
+            if (s.features[i] < min_vals[i]) min_vals[i] = s.features[i];
+            if (s.features[i] > max_vals[i]) max_vals[i] = s.features[i];
+        }
+    }
+
+    // 進行 Min-Max 縮放至 [0, 1]
+    for (auto& s : songs) {
+        s.normalized_features.resize(num_features);
+        for (int i = 0; i < num_features; i++) {
+            if (max_vals[i] - min_vals[i] == 0) {
+                s.normalized_features[i] = 0.0;
+            } else {
+                s.normalized_features[i] = (s.features[i] - min_vals[i]) / (max_vals[i] - min_vals[i]);
+            }
+        }
+    }
+}
+
+// 計算餘弦相似度
+double cosineSimilarity(const vector<double>& a, const vector<double>& b) {
+    double dot = 0, normA = 0, normB = 0;
+    for (size_t i = 0; i < a.size(); i++) {
+        dot += a[i] * b[i];
+        normA += a[i] * a[i];
+        normB += b[i] * b[i];
+    }
+    if (normA == 0 || normB == 0) return 0.0;
+    return dot / (sqrt(normA) * sqrt(normB));
+}
+
+int main() {
+    string filename = "songs_expanded.csv";
+    generateMockCSV(filename); // 自動建立測試資料
+    
+    vector<Song> songs = loadCSV(filename);
+    if (songs.empty()) return 1;
+    
+    // 執行特徵標準化
+    normalizeFeatures(songs);
+
+    // 設定測試目標歌曲 (以第一首 SongA 作為 User 當前聆聽歌曲)
+    int target_idx = 0; 
+    Song target = songs[target_idx];
+    
+    cout << "========================================================\n";
+    cout << "  跨語言音樂風格推薦系統 (Cross-Lingual Music Recommender)\n";
+    cout << "========================================================\n";
+    cout << "Target Song: " << target.name << " [" << target.language << "]\n";
+    cout << "Features (Raw) -> Tempo: " << target.features[0] << ", Energy: " << target.features[1] 
+         << ", Valence: " << target.features[2] << ", Danceability: " << target.features[3] << "\n\n";
+
+    int top_k = 5;
+
+    // ===== METHOD A: Content-Based Filtering (跨語言風格推薦) =====
+    vector<pair<double, Song>> resultsA;
+    auto startA = chrono::high_resolution_clock::now();
+
+    for (size_t i = 0; i < songs.size(); i++) {
+        if ((int)i == target_idx) continue; // 排除自己
+        double sim = cosineSimilarity(target.normalized_features, songs[i].normalized_features);
+        resultsA.push_back({sim, songs[i]});
+    }
+    sort(resultsA.begin(), resultsA.end(), [](const pair<double, Song>& a, const pair<double, Song>& b) {
+        return a.first > b.first;
+    });
+
+    auto endA = chrono::high_resolution_clock::now();
+
+    cout << "--- [Method A] Content-Based Recommendation (突破文化圈) ---\n";
+    int countA = 0;
+    int cross_lang_count = 0;
+    for (const auto& res : resultsA) {
+        if (countA++ >= top_k) break;
+        cout << fixed << setprecision(4)
+             << countA << ". " << res.second.name << " (" << res.second.language << ") "
+             << " - Artist: " << res.second.artist << " | Similarity: " << res.first << "\n";
+        if (res.second.language != target.language) {
+            cross_lang_count++;
+        }
+    }
+
+    // ===== METHOD B: Baseline Method (同語言風格排序) =====
+    vector<pair<double, Song>> resultsB;
+    auto startB = chrono::high_resolution_clock::now();
+
+    for (size_t i = 0; i < songs.size(); i++) {
+        if ((int)i == target_idx) continue;
+        // 限制條件：必須是同語言
+        if (songs[i].language == target.language) {
+            double sim = cosineSimilarity(target.normalized_features, songs[i].normalized_features);
+            resultsB.push_back({sim, songs[i]});
+        }
+    }
+    sort(resultsB.begin(), resultsB.end(), [](const pair<double, Song>& a, const pair<double, Song>& b) {
+        return a.first > b.first;
+    });
+
+    auto endB = chrono::high_resolution_clock::now();
+
+    cout << "\n--- [Method B] Baseline Recommendation (傳統同語言推薦) ---\n";
+    int countB = 0;
+    if (resultsB.empty()) {
+        cout << "(無相同語言的其他歌曲)\n";
+    } else {
+        for (const auto& res : resultsB) {
+            if (countB++ >= top_k) break;
+            cout << fixed << setprecision(4)
+                 << countB << ". " << res.second.name << " (" << res.second.language << ") "
+                 << " - Artist: " << res.second.artist << " | Similarity: " << res.first << "\n";
+        }
+    }
+
+    // ===== 效能與推薦多樣性分析 =====
+    chrono::duration<double, milli> timeA = endA - startA;
+    chrono::duration<double, milli> timeB = endB - startB;
+
+    cout << "\n==================== 效能與指標分析 ====================\n";
+    cout << "Method A (Content-Based) 執行時間: " << timeA.count() << " ms\n";
+    cout << "Method B (Baseline)      執行時間: " << timeB.count() << " ms\n";
+    cout << "--------------------------------------------------------\n";
+    cout << "【跨語言指標分析】\n";
+    cout << "在 Method A 推薦的前 " << top_k << " 首歌曲中，成功打破語言壁壘、推薦不同語言的歌曲比例為: " 
+         << (double)cross_lang_count / top_k * 100 << "%\n";
+    cout << "========================================================\n";
+
+    return 0;
+}
+
+4. 系統輸出範例
 執行後，系統會印出如下圖的分析圖表與數據成果：
 
 ========================================================
@@ -273,7 +485,7 @@ Method B (Baseline)      執行時間: 0.0120 ms
 在 Method A 推薦的前 5 首歌曲中，成功打破語言壁壘、推薦不同語言的歌曲比例為: 100.00%
 ========================================================
 
-4. 如何更換測試歌曲
+5. 如何更換測試歌曲
 若想測試其他歌曲作為使用者當前的聆聽喜好，只需修改 main() 函式中的 target_idx 變數即可：
 
 int target_idx = 3; // 改為 3 可以測試 SongD (快節奏英文歌) 的推薦表現

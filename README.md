@@ -218,7 +218,11 @@ SongJ,Artist10,English,130,0.9,0.8,0.95
 
    Min-Max 特徵標準化 (Normalization)：針對原始資料集中 tempo（動輒 80-130 bpm）與 energy、valence（介於 0~1 之間）的尺度巨大差異，系統在計算相似度前導入了標準化演算法，將所有特徵等比例縮放至 $[0, 1]$ 區間，避免特定高數值特徵主導了整體的相似度結果。
 
-   向量空間餘弦相似度 (Cosine Similarity)：利用多維度特徵向量的夾角餘弦值作為計算基準，公式如下：$$Similarity = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}$$此方法能精準捕捉兩首歌曲在節奏、能量與情感曲風上的核心骨架相似度，而非僅僅比對文字標籤。
+   向量空間餘弦相似度 (Cosine Similarity)：利用多維度特徵向量的夾角餘弦值作為計算基準，公式如下：
+
+$$Similarity = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}$$
+
+其中 $\mathbf{A}$ 與 $\mathbf{B}$ 分別代表目標歌曲與資料庫中歌曲的標準化特徵向量。透過此公式，系統能精準捕捉兩首歌曲在節奏、能量與情感曲風上的核心骨架相似度。
 
    演算法對照實驗：Method A (Content-Based Filtering)：全資料集檢索。不考慮語言標籤，純粹以聲學特徵進行全曲庫 Top-K 排序。Method B (Baseline Method)：過濾型相似度檢索。限制在與目標歌曲「相同語言」的範疇內進行特徵排序，模擬傳統推薦系統的保守推薦策略。
 
